@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AtmosGuard - Air Pollution Forecasting Dashboard</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Essential inline styles for body and empty containers based on prompt */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F4F7FA;
+            /* Light background */
+            margin: 0;
+            padding: 0;
+            color: #333;
+            /* Default text color */
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Sticky Navbar -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-brand">
+            <div class="logo">AtmosGuard</div>
+            <div class="search-container">
+                <input type="text" id="city-search" placeholder="Search city..." title="Search City Forecast">
+                <button id="search-btn" title="Search">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="nav-controls">
+            <button id="theme-toggle" class="icon-btn" title="Toggle Dark Mode">🌙</button>
+            <div class="profile-circle" title="Profile">👤</div>
+        </div>
+    </nav>
+
+    <!-- Main Dashboard Content -->
+    <main class="dashboard">
+        <section id="hero-summary" class="hero-strip fade-in">
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-label">Current AQI</span>
+                    <span class="metric-icon">🌬️</span>
+                </div>
+                <div class="metric-value">
+                    <span class="counter" data-target="82">0</span>
+                </div>
+                <div class="metric-trend good">Moderate</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-label">Predicted AQI (Tomorrow)</span>
+                    <span class="metric-icon">🔮</span>
+                </div>
+                <div class="metric-value">
+                    <span class="counter" data-target="74">0</span>
+                </div>
+                <div class="metric-trend good">Improving</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-label">ML Accuracy Improvement</span>
+                    <span class="metric-icon">🚀</span>
+                </div>
+                <div class="metric-value">
+                    <span class="counter" data-target="15">0</span><span class="metric-unit">%</span>
+                </div>
+                <div class="metric-trend neutral">vs Baseline</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-label">Model Confidence</span>
+                    <span class="metric-icon">🛡️</span>
+                </div>
+                <div class="metric-value">
+                    <span class="counter" data-target="94">0</span><span class="metric-unit">%</span>
+                </div>
+                <div class="metric-trend good">High</div>
+            </div>
+        </section>
+
+        <!-- NEW: Forecast Bias Correction Model Output -->
+        <section id="model-output-correction" class="dashboard-section fade-in" style="animation-delay: 0.05s;">
+            <div class="section-header">
+                <h2>Forecast Bias Correction Model Output</h2>
+            </div>
+
+            <!-- Top Row: Metric Cards for the specific model output -->
+            <div class="model-metrics-row">
+                <div class="metric-block">
+                    <span class="block-label">Actual O₃ Value</span>
+                    <span class="block-value" id="mo-actual">80 <small>ppb</small></span>
+                </div>
+                <div class="metric-block">
+                    <span class="block-label">Original Forecast</span>
+                    <span class="block-value" id="mo-original">82 <small>ppb</small></span>
+                </div>
+                <div class="metric-block highlight-block">
+                    <span class="block-label">ML Corrected</span>
+                    <span class="block-value text-success" id="mo-corrected">79 <small>ppb</small></span>
+                </div>
+                <div class="metric-block alert-bg">
+                    <span class="block-label">Residual Error</span>
+                    <span class="block-value" id="mo-residual">-1 <small>ppb</small></span>
+                </div>
+                <div class="metric-block">
+                    <span class="block-label">% Improvement</span>
+                    <span class="block-value text-success" id="mo-improvement">3.7%</span>
+                </div>
+            </div>
+
+            <!-- Bottom Row: Charts -->
+            <div class="model-charts-row">
+                <!-- Comparison Line Chart -->
+                <div class="model-chart-box">
+                    <h3 class="box-title">Regression Forecast Comparison</h3>
+                    <div class="model-chart-container">
+                        <canvas id="moLineChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Error Bar Chart -->
+                <div class="model-chart-box">
+                    <h3 class="box-title">Error Correction (Before vs After)</h3>
+                    <div class="model-chart-container">
+                        <canvas id="moBarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- NEW: Multi-Target Regression Model Output -->
+        <section id="multi-target-regression" class="dashboard-section fade-in" style="animation-delay: 0.08s;">
+            <div class="section-header">
+                <h2>Multi-Target Regression Model Output</h2>
+            </div>
+
+            <p class="section-description">This model simultaneously predicts multiple pollutants using shared
+                environmental features.</p>
+
+            <div class="pollutant-grid">
+                <!-- O3 Card -->
+                <div class="pollutant-card" id="mtr-card-o3">
+                    <div class="card-top">
+                        <span class="pollutant-name">O₃ <small>Ozone</small></span>
+                        <span class="health-badge badge-good">Good</span>
+                    </div>
+                    <div class="card-middle">
+                        <div class="pollutant-value"><span class="val">80</span> <small>ppb</small></div>
+                    </div>
+                    <div class="mtr-metrics">
+                        <div class="mtr-metric"><span class="label">R² Score:</span> <span class="val">0.87</span></div>
+                        <div class="mtr-metric"><span class="label">MAE:</span> <span class="val">4.2</span></div>
+                    </div>
+                    <div class="card-bottom">
+                        <div class="sparkline-container">
+                            <canvas id="mtr-sparkline-o3"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NO2 Card -->
+                <div class="pollutant-card" id="mtr-card-no2">
+                    <div class="card-top">
+                        <span class="pollutant-name">NO₂ <small>Nitrogen Dioxide</small></span>
+                        <span class="health-badge badge-good">Good</span>
+                    </div>
+                    <div class="card-middle">
+                        <div class="pollutant-value"><span class="val">35</span> <small>ppb</small></div>
+                    </div>
+                    <div class="mtr-metrics">
+                        <div class="mtr-metric"><span class="label">R² Score:</span> <span class="val">0.82</span></div>
+                        <div class="mtr-metric"><span class="label">MAE:</span> <span class="val">3.1</span></div>
+                    </div>
+                    <div class="card-bottom">
+                        <div class="sparkline-container">
+                            <canvas id="mtr-sparkline-no2"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PM2.5 Card -->
+                <div class="pollutant-card" id="mtr-card-pm25">
+                    <div class="card-top">
+                        <span class="pollutant-name">PM₂.₅ <small>Fine Particles</small></span>
+                        <span class="health-badge badge-moderate">Moderate</span>
+                    </div>
+                    <div class="card-middle">
+                        <div class="pollutant-value"><span class="val">60</span> <small>µg/m³</small></div>
+                    </div>
+                    <div class="mtr-metrics">
+                        <div class="mtr-metric"><span class="label">R² Score:</span> <span class="val">0.79</span></div>
+                        <div class="mtr-metric"><span class="label">MAE:</span> <span class="val">5.5</span></div>
+                    </div>
+                    <div class="card-bottom">
+                        <div class="sparkline-container">
+                            <canvas id="mtr-sparkline-pm25"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PM10 Card -->
+                <div class="pollutant-card" id="mtr-card-pm10">
+                    <div class="card-top">
+                        <span class="pollutant-name">PM₁₀ <small>Coarse Particles</small></span>
+                        <span class="health-badge badge-unhealthy">Unhealthy</span>
+                    </div>
+                    <div class="card-middle">
+                        <div class="pollutant-value"><span class="val">90</span> <small>µg/m³</small></div>
+                    </div>
+                    <div class="mtr-metrics">
+                        <div class="mtr-metric"><span class="label">R² Score:</span> <span class="val">0.76</span></div>
+                        <div class="mtr-metric"><span class="label">MAE:</span> <span class="val">6.2</span></div>
+                    </div>
+                    <div class="card-bottom">
+                        <div class="sparkline-container">
+                            <canvas id="mtr-sparkline-pm10"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="bias-correction" class="dashboard-section fade-in" style="animation-delay: 0.1s;">
+            <div class="section-header">
+                <h2>AI Forecast Bias Correction Engine</h2>
+                <div class="chart-controls">
+                    <button class="time-toggle active" data-range="24h">24H</button>
+                    <button class="time-toggle" data-range="7d">7D</button>
+                    <button class="time-toggle" data-range="30d">30D</button>
+                </div>
+            </div>
+
+            <div class="bias-panel-content">
+                <!-- Left: Metrics -->
+                <div class="bias-metrics">
+                    <div class="metric-block">
+                        <span class="block-label">Original Forecast</span>
+                        <span class="block-value">82 <small>µg/m³</small></span>
+                    </div>
+                    <div class="metric-block">
+                        <span class="block-label">ML Corrected</span>
+                        <span class="block-value text-success">74 <small>µg/m³</small></span>
+                    </div>
+                    <div class="metric-block highlight-block">
+                        <span class="block-label">Accuracy Improved</span>
+                        <span class="block-value">+10%</span>
+                        <div class="sparkline-placeholder"></div>
+                    </div>
+                </div>
+
+                <!-- Right: Chart -->
+                <div class="bias-chart-container">
+                    <canvas id="biasChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section id="multi-pollutant" class="dashboard-section fade-in" style="animation-delay: 0.2s;">
+            <div class="section-header">
+                <h2>Multi-Pollutant Prediction</h2>
+            </div>
+
+            <div class="pollutant-grid">
+                <!-- O3 Card -->
+                <div class="pollutant-card" id="card-o3">
+                    <div class="card-top">
+                        <span class="pollutant-name">O₃ <small>Ozone</small></span>
+                        <span class="health-badge"></span>
+                    </div>
+                    <div class="card-middle">
+                        <div class="pollutant-value"><span class="val">--</span> <small>ppb</small></div>
+                        <div class="trend-arrow"></div>
+                    </div>
+                    <div class="card-bottom">
+                        <div class="sparkline-container">
+                            <canvas id="sparkline-o3"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NO2 Card -->
+                <div class="pollutant-card" id="card-no2">
+                    <div class="card-top">
+                        <span class="pollutant-name">NO₂ <small>Nitrogen Dioxide</small></span>
+                        <span class="health-badge"></span>
+                    </div>
+                    <div class="card-middle">
+                        <div class="pollutant-value"><span class="val">--</span> <small>ppb</small></div>
+                        <div class="trend-arrow"></div>
+                    </div>
+                    <div class="card-bottom">
+                        <div class="sparkline-container">
+                            <canvas id="sparkline-no2"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PM2.5 Card -->
+                <div class="pollutant-card" id="card-pm25">
+                    <div class="card-top">
+                        <span class="pollutant-name">PM₂.₅ <small>Fine Particles</small></span>
+                        <span class="health-badge"></span>
+                    </div>
+                    <div class="card-middle">
+                        <div class="pollutant-value"><span class="val">--</span> <small>µg/m³</small></div>
+                        <div class="trend-arrow"></div>
+                    </div>
+                    <div class="card-bottom">
+                        <div class="sparkline-container">
+                            <canvas id="sparkline-pm25"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PM10 Card -->
+                <div class="pollutant-card" id="card-pm10">
+                    <div class="card-top">
+                        <span class="pollutant-name">PM₁₀ <small>Coarse Particles</small></span>
+                        <span class="health-badge"></span>
+                    </div>
+                    <div class="card-middle">
+                        <div class="pollutant-value"><span class="val">--</span> <small>µg/m³</small></div>
+                        <div class="trend-arrow"></div>
+                    </div>
+                    <div class="card-bottom">
+                        <div class="sparkline-container">
+                            <canvas id="sparkline-pm10"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- NEW: Site Generalization Analysis -->
+        <section id="site-generalization" class="dashboard-section fade-in" style="animation-delay: 0.25s;">
+            <div class="section-header">
+                <h2>Site Generalization Analysis</h2>
+                <div class="chart-controls">
+                    <button class="spatial-toggle active" data-type="within">Within-Site</button>
+                    <button class="spatial-toggle" data-type="cross">Cross-Site</button>
+                </div>
+            </div>
+
+            <p class="section-description">This analysis evaluates the spatial generalization capability of the model.
+            </p>
+
+            <div class="spatial-panel-content">
+                <!-- Left: Evaluation Table -->
+                <div class="spatial-table-container">
+                    <table class="styled-table" id="spatial-table">
+                        <thead>
+                            <tr>
+                                <th>Train Site</th>
+                                <th>Test Site</th>
+                                <th>RMSE</th>
+                                <th>R² Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Rows injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Right: Bar Chart -->
+                <div class="spatial-chart-container">
+                    <h3 class="box-title" style="margin-top: 0; font-size: 15px; margin-bottom: 15px;">RMSE Across Test
+                        Sites</h3>
+                    <div style="position: relative; height: 250px; width: 100%;">
+                        <canvas id="spatialBarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="risk-alert" class="dashboard-section fade-in" style="animation-delay: 0.3s;">
+            <div id="alert-banner" class="alert-banner">
+                <!-- Content injected dynamically via JS -->
+            </div>
+        </section>
+
+        <!-- NEW: Feature Importance Analysis -->
+        <!-- <section id="feature-importance-analysis" class="dashboard-section fade-in" style="animation-delay: 0.4s;">
+            <div class="section-header">
+                <h2>Feature Importance Analysis (Explainable AI)</h2>
+                <div class="chart-controls">
+                    <button class="feature-toggle active" data-target="o3">O₃ Importance</button>
+                    <button class="feature-toggle" data-target="no2">NO₂ Importance</button>
+                </div>
+            </div>
+
+            <div class="feature-panel-content">
+                <div class="feature-chart-container">
+                    <canvas id="newFeatureChart"></canvas>
+                </div>
+                <!-- Explanation Box -->
+                <div class="ai-explanation">
+                    <div class="ai-icon">✨</div>
+                    <p><strong>AI Insight:</strong> <span id="new-ai-insight-text">The model identifies Wind Speed as
+                            the dominant contributor influencing O₃ concentration.</span></p>
+                </div>
+            </div>
+        </section> -->
+
+        <section id="site-performance" class="dashboard-section fade-in" style="animation-delay: 0.5s;">
+            <div class="section-header">
+                <h2>Site Performance & Model Evaluation</h2>
+                <div class="header-controls">
+                    <select id="site-eval-select" class="site-dropdown">
+                        <option value="downtown">Downtown Station</option>
+                        <option value="industrial">Industrial Zone</option>
+                        <option value="suburban">Suburban Area</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Metrics Row -->
+            <div class="eval-metrics-row">
+                <div class="eval-metric">
+                    <span class="eval-label">RMSE (O₃)</span>
+                    <span class="eval-value" id="eval-rmse-o3">4.2</span>
+                </div>
+                <div class="eval-metric">
+                    <span class="eval-label">RMSE (NO₂)</span>
+                    <span class="eval-value" id="eval-rmse-no2">6.8</span>
+                </div>
+                <div class="eval-metric">
+                    <span class="eval-label">MAE</span>
+                    <span class="eval-value" id="eval-mae">3.5</span>
+                </div>
+                <div class="eval-metric">
+                    <span class="eval-label">R² Score</span>
+                    <span class="eval-value" id="eval-r2">0.92</span>
+                </div>
+            </div>
+
+            <!-- Chart Area -->
+            <div class="eval-chart-header">
+                <h3>Actual vs Predicted</h3>
+                <div class="chart-controls">
+                    <button class="pollutant-toggle active" data-target="o3">O₃</button>
+                    <button class="pollutant-toggle" data-target="no2">NO₂</button>
+                </div>
+            </div>
+            <div class="eval-chart-container">
+                <canvas id="evalChart"></canvas>
+            </div>
+        </section>
+
+        <section id="historical-trends" class="dashboard-section fade-in" style="animation-delay: 0.6s;">
+            <div class="section-header">
+                <h2>Historical Trend Explorer</h2>
+                <div class="chart-controls">
+                    <button class="history-toggle active" data-range="7d">7 Days</button>
+                    <button class="history-toggle" data-range="30d">30 Days</button>
+                    <button class="history-toggle" data-range="6m">6 Months</button>
+                </div>
+            </div>
+
+            <div class="history-chart-container">
+                <canvas id="historyChart"></canvas>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
