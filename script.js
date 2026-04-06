@@ -1,3 +1,18 @@
+// === API CONFIGURATION ===
+const API_BASE_URL = 'http://127.0.0.1:8000';
+
+// Fetch spike prediction from backend
+async function fetchSpikePrediction(city) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/predict/${encodeURIComponent(city)}`);
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
+        return await response.json();
+    } catch (error) {
+        console.error('Spike Prediction API failed:', error);
+        return null;
+    }
+}
+
 // Mock JSON Data for Step 2
 const mockHeroData = {
     currentAQI: 82,
@@ -169,7 +184,7 @@ function updateChartsTheme(isDark) {
     const gridColor = isDark ? '#334155' : '#F1F5F9';
     const textColor = isDark ? '#94A3B8' : '#64748B';
 
-    Chart.instances.forEach(chart => {
+    Object.values(Chart.instances).forEach(chart => {
         // Update scales if they exist
         if (chart.options.scales) {
             if (chart.options.scales.x) {
@@ -659,75 +674,210 @@ function initMultiPollutant() {
 }
 
 // === SMART ALERT BANNER (STEP 5) ===
-function initAlertBanner() {
+// Accepts optional prediction data from the Spike Prediction API + city name
+// prediction shape: { prediction, confidence, level, color, message }
+function initAlertBanner(predictionData, cityName) {
     const bannerContainer = document.getElementById('alert-banner');
     if (!bannerContainer) return;
 
-    // Using the predicted AQI from mockHeroData to determine logic
-    const aqi = mockHeroData.predictedAQI;
+    // Color map for model color names → hex
+    const colorHexMap = { green: '#2ECC71', yellow: '#F5B041', orange: '#E67E22', red: '#E74C3C' };
 
-    let bannerHTML = '';
+    // Level configurations
+    const levelConfig = {
+        'Safe': {
+            icon: '🛡️', title: 'AIR QUALITY IS OPTIMAL',
+            action: 'Enjoy Outdoors', duration: 'Next 48h',
+            bannerClass: 'alert-safe', hex: '#2ECC71',
+            reasons: ['Low O₃ forecast levels', 'Stable NO₂ concentrations', 'Good wind dispersion patterns']
+        },
+        'Moderate': {
+            icon: '⚡', title: 'MODERATE POLLUTION RISK',
+            action: 'Limit Prolonged Outdoor Exertion', duration: 'Next 24h',
+            bannerClass: 'alert-moderate', hex: '#F5B041',
+            reasons: ['Slightly elevated O₃ forecast', 'Moderate NO₂ levels detected', 'Reduced wind dispersion expected']
+        },
+        'High Risk': {
+            icon: '🔥', title: 'HIGH POLLUTION RISK DETECTED',
+            action: 'Reduce Outdoor Activity', duration: 'Next 12h',
+            bannerClass: 'alert-warning', hex: '#E67E22',
+            reasons: ['High O₃ forecast values', 'Rising NO₂ levels in region', 'Low wind dispersion capacity']
+        },
+        'Severe': {
+            icon: '🚨', title: 'SEVERE POLLUTION SPIKE DETECTED',
+            action: 'Stay Indoors', duration: 'Immediate',
+            bannerClass: 'alert-danger', hex: '#E74C3C',
+            reasons: ['Critical O₃ forecast spike', 'Dangerously high NO₂ levels', 'Near-zero wind dispersion']
+        }
+    };
 
-    if (aqi > 150) {
-        // High Pollution Event
-        bannerHTML = `
-            <div class="alert-main">
-                <div class="alert-icon">🔴</div>
-                <div class="alert-text">
-                    <h3>HIGH POLLUTION EVENT DETECTED</h3>
-                    <p>Predicted AQI exceeds safe thresholds. Sensitive groups should avoid outdoor exertion.</p>
-                </div>
-            </div>
-            <div class="alert-details">
-                <div class="alert-detail-item">
-                    <span class="alert-detail-label">Action</span>
-                    <span class="alert-detail-value">Stay Indoors</span>
-                </div>
-                <div class="alert-detail-item">
-                    <span class="alert-detail-label">Duration</span>
-                    <span class="alert-detail-value">Next 12h</span>
-                </div>
-                <div class="alert-detail-item">
-                    <span class="alert-detail-label">AI Confidence</span>
-                    <span class="alert-detail-value">92%</span>
-                </div>
-            </div>
-        `;
-        bannerContainer.classList.add('alert-danger');
+    // Determine config values
+    let config, confidence, message, colorHex;
+
+    if (predictionData) {
+        const level = predictionData.level;
+        confidence = predictionData.confidence;
+        message = predictionData.message;
+        config = levelConfig[level] || levelConfig['Safe'];
+        colorHex = colorHexMap[predictionData.color] || config.hex;
     } else {
-        // Safe condition
-        bannerHTML = `
-            <div class="alert-main">
-                <div class="alert-icon">🟢</div>
-                <div class="alert-text">
-                    <h3>AIR QUALITY IS OPTIMAL</h3>
-                    <p>Current forecasts indicate clear skies and healthy air quality.</p>
-                </div>
-            </div>
-            <div class="alert-details">
-                <div class="alert-detail-item">
-                    <span class="alert-detail-label">Action</span>
-                    <span class="alert-detail-value">Enjoy Outdoors</span>
-                </div>
-                <div class="alert-detail-item">
-                    <span class="alert-detail-label">Duration</span>
-                    <span class="alert-detail-value">Next 48h</span>
-                </div>
-                <div class="alert-detail-item">
-                    <span class="alert-detail-label">AI Confidence</span>
-                    <span class="alert-detail-value">96%</span>
-                </div>
-            </div>
-        `;
-        bannerContainer.classList.add('alert-safe');
+        const aqi = mockHeroData.predictedAQI;
+        if (aqi > 150) {
+            config = levelConfig['Severe'];
+            confidence = 92;
+            message = 'Predicted AQI exceeds safe thresholds. Sensitive groups should avoid outdoor exertion.';
+            colorHex = '#E74C3C';
+        } else {
+            config = levelConfig['Safe'];
+            confidence = 96;
+            message = 'Current forecasts indicate clear skies and healthy air quality.';
+            colorHex = '#2ECC71';
+        }
     }
 
+    const displayCity = cityName ? cityName.charAt(0).toUpperCase() + cityName.slice(1) : 'Your City';
+    // The API returns spike probability (0-100). For display:
+    // - If prediction=1 (spike detected), confidence = how sure about the spike
+    // - If prediction=0 (safe), confidence = how sure it's safe = (100 - spike_prob)
+    let displayConfidence = confidence;
+    if (predictionData && predictionData.prediction === 0) {
+        displayConfidence = parseFloat((100 - confidence).toFixed(2));
+    }
+    const confPercent = Math.min(Math.max(displayConfidence, 0), 100);
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const isSevere = config === levelConfig['Severe'] || config === levelConfig['High Risk'];
+
+    // SVG gauge
+    const radius = 36;
+    const circumference = 2 * Math.PI * radius;
+    const dashOffset = circumference - (confPercent / 100) * circumference;
+
+    // Build reasons HTML
+    const reasonsHTML = config.reasons.map(r =>
+        `<li><span class="reason-dot" style="background:${colorHex}"></span>${r}</li>`
+    ).join('');
+
+    const bannerHTML = `
+        <!-- Status Strip -->
+        <div class="ab-status-strip">
+            <div class="ab-live-group">
+                <span class="ab-pulse-dot ${isSevere ? 'ab-pulse-severe' : ''}" style="background:${colorHex};box-shadow:0 0 8px ${colorHex}"></span>
+                <span class="ab-live-label">● LIVE AI MODEL</span>
+                <span class="ab-timestamp">Updated ${timeStr}</span>
+            </div>
+            <div class="ab-badge-group">
+                <span class="ab-system-label">AI-Powered Prediction System</span>
+                <span class="ab-level-badge" style="background:${colorHex}22;color:${colorHex};border:1px solid ${colorHex}55">${config.title.includes('SEVERE') ? '🔴' : config.title.includes('HIGH') ? '🟠' : config.title.includes('MODERATE') ? '🟡' : '🟢'} ${predictionData ? predictionData.level : (mockHeroData.predictedAQI > 150 ? 'Severe' : 'Safe')}</span>
+            </div>
+        </div>
+
+        <!-- Hero Row -->
+        <div class="ab-hero-row">
+            <!-- Left: Icon + Text -->
+            <div class="ab-hero-left">
+                <div class="ab-icon-ring ${isSevere ? 'ab-ring-pulse' : ''}" style="border-color:${colorHex}40;background:${colorHex}15">
+                    <span class="ab-icon-emoji">${config.icon}</span>
+                </div>
+                <div class="ab-hero-text">
+                    <h3 class="ab-title">${config.title}</h3>
+                    <p class="ab-subtitle">${message}</p>
+                    <span class="ab-city-tag" style="background:${colorHex}20;color:${colorHex};border:1px solid ${colorHex}40">📍 ${displayCity}</span>
+                </div>
+            </div>
+
+            <!-- Right: SVG Confidence Gauge -->
+            <div class="ab-gauge-wrap">
+                <svg class="ab-gauge-svg" viewBox="0 0 86 86">
+                    <circle class="ab-gauge-track" cx="43" cy="43" r="${radius}" />
+                    <circle class="ab-gauge-fill" cx="43" cy="43" r="${radius}"
+                        stroke="${colorHex}"
+                        stroke-dasharray="${circumference}"
+                        stroke-dashoffset="${circumference}"
+                        data-target-offset="${dashOffset}" />
+                </svg>
+                <div class="ab-gauge-center">
+                    <span class="ab-gauge-val">${confPercent}</span>
+                    <span class="ab-gauge-pct">%</span>
+                </div>
+                <span class="ab-gauge-label">AI Confidence</span>
+            </div>
+        </div>
+
+        <!-- Stat Cards Row -->
+        <div class="ab-stats-row">
+            <div class="ab-stat-card" style="--ab-accent:${colorHex}">
+                <div class="ab-stat-icon">📊</div>
+                <span class="ab-stat-label">Risk Level</span>
+                <span class="ab-stat-value" style="color:${colorHex}">${predictionData ? predictionData.level : (mockHeroData.predictedAQI > 150 ? 'Severe' : 'Safe')}</span>
+            </div>
+            <div class="ab-stat-card" style="--ab-accent:${colorHex}">
+                <div class="ab-stat-icon">🛡️</div>
+                <span class="ab-stat-label">Recommended Action</span>
+                <span class="ab-stat-value">${config.action}</span>
+            </div>
+            <div class="ab-stat-card" style="--ab-accent:${colorHex}">
+                <div class="ab-stat-icon">⏱️</div>
+                <span class="ab-stat-label">Duration</span>
+                <span class="ab-stat-value">${config.duration}</span>
+            </div>
+            <div class="ab-stat-card" style="--ab-accent:${colorHex}">
+                <div class="ab-stat-icon">🤖</div>
+                <span class="ab-stat-label">AI Confidence</span>
+                <span class="ab-stat-value">${confPercent}%</span>
+            </div>
+        </div>
+
+        <!-- Confidence Progress Bar -->
+        <div class="ab-progress-section">
+            <div class="ab-progress-header">
+                <span class="ab-progress-title">Model Confidence</span>
+                <span class="ab-progress-pct" style="color:${colorHex}">${confPercent}%</span>
+            </div>
+            <div class="ab-progress-track">
+                <div class="ab-progress-fill" style="background:${colorHex}" data-width="${confPercent}%"></div>
+            </div>
+        </div>
+
+        <!-- Explainable AI Section -->
+        <div class="ab-explain-section">
+            <div class="ab-explain-header">
+                <span class="ab-explain-icon">🧠</span>
+                <span class="ab-explain-title">Why this alert?</span>
+            </div>
+            <ul class="ab-reason-list">
+                ${reasonsHTML}
+            </ul>
+        </div>
+    `;
+
+    bannerContainer.classList.add(config.bannerClass);
     bannerContainer.innerHTML = bannerHTML;
 
-    // Add slide-in animation with slight delay
+    // Animate in
     setTimeout(() => {
         bannerContainer.classList.add('show');
-    }, 500);
+
+        // Animate gauge fill — use setAttribute for SVG compatibility
+        const gaugeFill = bannerContainer.querySelector('.ab-gauge-fill');
+        if (gaugeFill) {
+            const target = gaugeFill.getAttribute('data-target-offset');
+            // Use requestAnimationFrame to ensure the initial offset is rendered first
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    gaugeFill.setAttribute('stroke-dashoffset', target);
+                });
+            });
+        }
+
+        // Animate progress bar
+        const progressFill = bannerContainer.querySelector('.ab-progress-fill');
+        if (progressFill) {
+            requestAnimationFrame(() => {
+                progressFill.style.width = progressFill.getAttribute('data-width');
+            });
+        }
+    }, 400);
 }
 
 // === FEATURE IMPORTANCE CHART (STEP 6) ===
@@ -954,17 +1104,30 @@ function initSearch() {
     const searchInput = document.getElementById('city-search');
     const searchBtn = document.getElementById('search-btn');
 
-    const performSearch = () => {
+    const performSearch = async () => {
         const query = searchInput.value.toLowerCase().trim();
         if (!query) return;
 
         const cityData = mockCityDatabase[query];
 
+        // 1. Call the Spike Prediction API for any searched city
+        const spikePrediction = await fetchSpikePrediction(query);
+
         if (cityData) {
-            updateDashboardForCity(query, cityData);
-            // Optionally clear the input or show a success message
+            updateDashboardForCity(query, cityData, spikePrediction);
         } else {
-            alert(`No forecast data found for "${query}". Try London, Delhi, New York, or Tokyo.`);
+            // Even if not in mock DB, still update the alert banner if API returned data
+            if (spikePrediction) {
+                const bannerContainer = document.getElementById('alert-banner');
+                if (bannerContainer) {
+                    bannerContainer.classList.remove('alert-danger', 'alert-safe', 'alert-moderate', 'alert-warning', 'show');
+                    setTimeout(() => {
+                        initAlertBanner(spikePrediction, query);
+                    }, 300);
+                }
+            } else {
+                alert(`No forecast data found for "${query}". Try London, Delhi, New York, or Tokyo.`);
+            }
         }
     };
 
@@ -979,7 +1142,7 @@ function initSearch() {
     });
 }
 
-function updateDashboardForCity(cityName, data) {
+function updateDashboardForCity(cityName, data, spikePrediction) {
     // 1. Update Hero Cards (Using the shared animateValue function)
     const counters = document.querySelectorAll('#hero-summary .counter');
 
@@ -1025,7 +1188,7 @@ function updateDashboardForCity(cityName, data) {
 
             // Find the specific chart instance inside this canvas to update colors
             const chartId = `sparkline-${key}`;
-            Chart.instances.forEach(instance => {
+            Object.values(Chart.instances).forEach(instance => {
                 if (instance.canvas.id === chartId) {
                     instance.data.datasets[0].borderColor = lineColor;
                     instance.data.datasets[0].backgroundColor = `${lineColor}20`; // 20 hex is 12% opacity
@@ -1061,17 +1224,16 @@ function updateDashboardForCity(cityName, data) {
         }
     });
 
-    // 3. Update Risk Alert Banner based on new Predicted AQI
-    // Update mockHeroData so initAlertBanner reads the new value
+    // 3. Update Risk Alert Banner using real model prediction data
     mockHeroData.predictedAQI = data.pred;
 
-    // Reset banner classes and re-run init
+    // Reset banner classes and re-run init with API prediction data
     const bannerContainer = document.getElementById('alert-banner');
     if (bannerContainer) {
-        bannerContainer.classList.remove('alert-danger', 'alert-safe', 'show');
+        bannerContainer.classList.remove('alert-danger', 'alert-safe', 'alert-moderate', 'alert-warning', 'show');
         // small timeout to allow CSS transition to hide it before showing new data
         setTimeout(() => {
-            initAlertBanner();
+            initAlertBanner(spikePrediction || null, cityName);
         }, 300);
     }
 
@@ -1100,7 +1262,7 @@ function updateDashboardForCity(cityName, data) {
     }
 
     // 5. Update Feature Importance Chart
-    const featureChart = Chart.instances.find(c => c.canvas.id === 'featureChart');
+    const featureChart = Object.values(Chart.instances).find(c => c.canvas.id === 'featureChart');
     if (featureChart) {
         // Generate random contributions that sum to ~100
         let remaining = 100;

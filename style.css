@@ -710,25 +710,24 @@ body {
     }
 }
 
-/* === Smart Alert Banner (Step 5) === */
+/* === Smart Alert Banner (Step 5) — Premium Redesign === */
 #risk-alert {
     padding: 0;
     box-shadow: none;
     min-height: auto;
     background: transparent;
+    border: none;
 }
 
 .alert-banner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 30px;
-    border-radius: 14px;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+    position: relative;
+    overflow: hidden;
+    border-radius: 18px;
+    padding: 0;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
     opacity: 0;
-    /* Base opacity for slide-int animation */
     transform: translateY(-20px);
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .alert-banner.show {
@@ -736,92 +735,447 @@ body {
     transform: translateY(0);
 }
 
+/* Gradient backgrounds per risk level */
 .alert-danger {
-    background: linear-gradient(135deg, #E74C3C, #C0392B);
-    color: var(--card-bg);
+    background: linear-gradient(135deg, #C0392B 0%, #E74C3C 40%, #c0392b 100%);
+    color: #fff;
 }
-
 .alert-safe {
-    background: linear-gradient(135deg, #2ECC71, #27AE60);
-    color: var(--card-bg);
+    background: linear-gradient(135deg, #1E8449 0%, #2ECC71 40%, #27AE60 100%);
+    color: #fff;
+}
+.alert-moderate {
+    background: linear-gradient(135deg, #B7950B 0%, #F5B041 40%, #D4AC0D 100%);
+    color: #fff;
+}
+.alert-warning {
+    background: linear-gradient(135deg, #BA4A00 0%, #E67E22 40%, #D35400 100%);
+    color: #fff;
 }
 
-.alert-main {
+/* ── Status Strip ── */
+.ab-status-strip {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 28px;
+    background: rgba(0, 0, 0, 0.15);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.ab-live-group {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 10px;
 }
 
-.alert-icon {
-    font-size: 32px;
-    animation: pulseIcon 2s infinite;
+.ab-pulse-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    animation: abPulse 1.5s ease-in-out infinite;
 }
 
-@keyframes pulseIcon {
-    0% {
-        transform: scale(1);
-    }
-
-    50% {
-        transform: scale(1.1);
-    }
-
-    100% {
-        transform: scale(1);
-    }
+.ab-pulse-severe {
+    animation: abPulseSevere 0.8s ease-in-out infinite;
 }
 
-.alert-text h3 {
-    margin: 0 0 5px 0;
-    font-size: 20px;
+@keyframes abPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.3); }
+}
+
+@keyframes abPulseSevere {
+    0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 6px currentColor; }
+    50% { opacity: 0.6; transform: scale(1.5); box-shadow: 0 0 18px currentColor; }
+}
+
+.ab-live-label {
+    font-size: 11px;
     font-weight: 700;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    opacity: 0.9;
 }
 
-.alert-text p {
-    margin: 0;
-    font-size: 14px;
-    opacity: 0.9;
+.ab-timestamp {
+    font-size: 11px;
+    opacity: 0.6;
     font-weight: 500;
 }
 
-.alert-details {
+.ab-badge-group {
     display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ab-system-label {
+    font-size: 11px;
+    font-weight: 600;
+    opacity: 0.7;
+    letter-spacing: 0.5px;
+}
+
+.ab-level-badge {
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    backdrop-filter: blur(6px);
+}
+
+/* ── Hero Row ── */
+.ab-hero-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 28px 32px 20px;
+    gap: 30px;
+}
+
+.ab-hero-left {
+    display: flex;
+    align-items: flex-start;
     gap: 20px;
+    flex: 1;
 }
 
-.alert-detail-item {
-    background: rgba(255, 255, 255, 0.2);
-    padding: 8px 16px;
-    border-radius: 8px;
-    text-align: center;
+.ab-icon-ring {
+    width: 64px;
+    height: 64px;
+    min-width: 64px;
+    border-radius: 50%;
+    border: 3px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.ab-ring-pulse {
+    animation: abRingPulse 2s ease-in-out infinite;
+}
+
+@keyframes abRingPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); }
+    50% { box-shadow: 0 0 0 12px rgba(231, 76, 60, 0); }
+}
+
+.ab-icon-emoji {
+    font-size: 28px;
+}
+
+.ab-hero-text {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ab-title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    line-height: 1.2;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.ab-subtitle {
+    margin: 0;
+    font-size: 14px;
+    opacity: 0.88;
+    font-weight: 500;
+    line-height: 1.4;
+    max-width: 480px;
+}
+
+.ab-city-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+    width: fit-content;
+    margin-top: 4px;
     backdrop-filter: blur(4px);
-    color: var(--card-bg);
 }
 
-.alert-detail-label {
-    display: block;
+/* ── SVG Confidence Gauge ── */
+.ab-gauge-wrap {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    min-width: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.ab-gauge-svg {
+    width: 86px;
+    height: 86px;
+    transform: rotate(-90deg);
+}
+
+.ab-gauge-track {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.15);
+    stroke-width: 6;
+}
+
+.ab-gauge-fill {
+    fill: none;
+    stroke-width: 6;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ab-gauge-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -58%);
+    display: flex;
+    align-items: baseline;
+    gap: 1px;
+}
+
+.ab-gauge-val {
+    font-size: 22px;
+    font-weight: 800;
+}
+
+.ab-gauge-pct {
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.8;
+}
+
+.ab-gauge-label {
+    position: absolute;
+    bottom: 2px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.7;
+    white-space: nowrap;
+}
+
+/* ── Stat Cards Row ── */
+.ab-stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    padding: 0 28px 20px;
+}
+
+.ab-stat-card {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: default;
+}
+
+.ab-stat-card:hover {
+    background: rgba(255, 255, 255, 0.22);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.ab-stat-icon {
+    font-size: 22px;
+    margin-bottom: 2px;
+}
+
+.ab-stat-label {
     font-size: 11px;
     text-transform: uppercase;
-    opacity: 0.8;
-    margin-bottom: 4px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    opacity: 0.75;
 }
 
-.alert-detail-value {
+.ab-stat-value {
     font-size: 16px;
-    font-weight: 700;
+    font-weight: 800;
 }
 
+/* ── Confidence Progress Bar ── */
+.ab-progress-section {
+    padding: 0 28px 18px;
+}
+
+.ab-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.ab-progress-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.8;
+}
+
+.ab-progress-pct {
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.ab-progress-track {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.ab-progress-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 10px;
+    transition: width 1.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
+    position: relative;
+}
+
+.ab-progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: abShimmer 2s infinite;
+}
+
+@keyframes abShimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* ── Explainable AI Section ── */
+.ab-explain-section {
+    padding: 16px 28px 22px;
+    margin: 0 20px 20px;
+    background: rgba(0, 0, 0, 0.12);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ab-explain-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.ab-explain-icon {
+    font-size: 18px;
+}
+
+.ab-explain-title {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.ab-reason-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ab-reason-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0.9;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.ab-reason-list li:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.reason-dot {
+    width: 8px;
+    height: 8px;
+    min-width: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+/* ── Responsive ── */
 @media (max-width: 900px) {
-    .alert-banner {
+    .ab-hero-row {
         flex-direction: column;
         align-items: flex-start;
         gap: 20px;
+        padding: 20px 20px 16px;
     }
 
-    .alert-details {
-        width: 100%;
-        justify-content: space-between;
+    .ab-gauge-wrap {
+        align-self: center;
+    }
+
+    .ab-stats-row {
+        grid-template-columns: repeat(2, 1fr);
+        padding: 0 16px 16px;
+    }
+
+    .ab-status-strip {
+        padding: 10px 16px;
+    }
+
+    .ab-progress-section {
+        padding: 0 16px 14px;
+    }
+
+    .ab-explain-section {
+        margin: 0 12px 16px;
+        padding: 14px 16px 18px;
+    }
+
+    .ab-title {
+        font-size: 18px;
+    }
+}
+
+@media (max-width: 480px) {
+    .ab-stats-row {
+        grid-template-columns: 1fr;
+    }
+
+    .ab-badge-group {
+        display: none;
     }
 }
 
